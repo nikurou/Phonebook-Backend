@@ -2,7 +2,14 @@ const { response } = require('express')
 const express = require('express')
 const app = express()
 
+var morgan = require('morgan')
+
+morgan.token('body', function (req){
+  return JSON.stringify(req.body)
+})
+
 //In order to access data needed for adding new entry, we need this json-parser.
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
 app.use(express.json())
 
 let persons = [
@@ -27,7 +34,6 @@ let persons = [
         "id": 4
     }
 ]
-
 
 //Info 
 app.get('/api/info', (req, res) => {
@@ -93,7 +99,6 @@ app.get('/api/persons/:id', (request, response) => {
         id : generateID(),
       }
       
-      console.log("Name:", person.name)
       persons = persons.concat(person)
       
       res.json(person)
@@ -105,3 +110,4 @@ app.get('/api/persons/:id', (request, response) => {
   })
 
   //Uses NodeExpress and Nodemon
+
