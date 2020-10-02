@@ -1,6 +1,7 @@
 const { response } = require('express')
 const express = require('express')
 const app = express()
+const cors = require('cors')
 
 var morgan = require('morgan')
 
@@ -11,6 +12,7 @@ morgan.token('body', function (req){
 //In order to access data needed for adding new entry, we need this json-parser.
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
 app.use(express.json())
+app.use(cors())
 
 let persons = [
     {
@@ -104,7 +106,7 @@ app.get('/api/persons/:id', (request, response) => {
       res.json(person)
   })
   
-  const PORT = 3001
+  const PORT = process.env.PORT || 3001
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
   })
