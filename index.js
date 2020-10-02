@@ -1,4 +1,4 @@
-const { response } = require('express')
+
 const express = require('express')
 const app = express()
 const cors = require('cors') 
@@ -72,7 +72,9 @@ app.get('/api/persons/:id', (request, response) => {
 
       //Even if the resource didn't originally exist, there's no consensus on what code should be returned
       //so in both cases, let's just return 204.
-      response.status(204).end()
+      res.status(204).end()
+
+      console.log(`AFTER DELETING: ${persons}`)
   })
 
   const generateID = () => {
