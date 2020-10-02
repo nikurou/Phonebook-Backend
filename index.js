@@ -1,7 +1,7 @@
 const { response } = require('express')
 const express = require('express')
 const app = express()
-const cors = require('cors')
+const cors = require('cors') 
 
 var morgan = require('morgan')
 
@@ -9,10 +9,11 @@ morgan.token('body', function (req){
   return JSON.stringify(req.body)
 })
 
-//In order to access data needed for adding new entry, we need this json-parser.
-app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
-app.use(express.json())
-app.use(cors())
+
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body')) //Console Logging format with Morgan
+app.use(express.json()) //JSON PARSER
+app.use(express.static('build')) //To make Express show static content, the index HTML and JS, etc. 
+app.use(cors()) //Cross-Origin Resource Sharing (CORS) allows restricted resources on a webpage to be requested from another domain. 
 
 let persons = [
     {
