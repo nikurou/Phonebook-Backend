@@ -1,42 +1,22 @@
-
+require('dotenv').config() //This must be imported before the Person model, otherwise Person won't have an env variable or address to work off of.
 const express = require('express')
 const app = express()
 const cors = require('cors') 
+const Person = require('./models/person')
 
 var morgan = require('morgan')
+const { response } = require('express')
 
 morgan.token('body', function (req){
   return JSON.stringify(req.body)
 })
-
 
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body')) //Console Logging format with Morgan
 app.use(express.json()) //JSON PARSER
 app.use(express.static('build')) //To make Express show static content, the index HTML and JS, etc. 
 app.use(cors()) //Cross-Origin Resource Sharing (CORS) allows restricted resources on a webpage to be requested from another domain. 
 
-let persons = [
-    {
-        "name": "Arto Hellas",
-        "number": "040-123456",
-        "id": 1
-    },
-    {
-        "name": "Ada Lovelace",
-        "number": "39-44-5323523",
-        "id": 2
-    },
-    {
-        "name": "Dan Abramov",
-        "number": "12-43-234345",
-        "id": 3
-    },
-    {
-        "name": "Mary Poppendieck",
-        "number": "39-23-6423122",
-        "id": 4
-    }
-]
+let persons = []
 
 //Info 
 app.get('/api/info', (req, res) => {
@@ -47,69 +27,51 @@ app.get('/api/info', (req, res) => {
   
 //Fetching all resources
 app.get('/api/persons', (req, res) => {
-    res.json(persons)
+    Person.find({}).then(person => {
+      res.json(person)
+    })
 })
 
 //Fetching a single person resource
 app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    console.log('id is : ' + id)
-    const person = persons.find(element => { return element.id === id})
-    console.log(person)
-
-    //If an entry for the given id is not found, the server has to respond with the appropriate status code.
-    if(person){
-        response.json(person)
-    } else{
-        response.status(404).end()
-    }
-  })
+    Person.findById(request.params.id).then(person => {
+      response.json(person)
+    }).catch(error =>response.status(404).end())
+})
 
   //Deleting a single phonebook entry
   app.delete('/api/persons/:id', (req, res) => {
-      const id = Number(req.params.id)
-      persons = persons.filter(element => element.id !== id)
+    const id = Number(req.params.id)
+    persons = persons.filter(element => element.id !== id)
 
-      //Even if the resource didn't originally exist, there's no consensus on what code should be returned
-      //so in both cases, let's just return 204.
-      res.status(204).end()
+    //Even if the resource didn't originally exist, there's no consensus on what code should be returned
+    //so in both cases, let's just return 204.
+    res.status(204).end()
 
-      console.log(`AFTER DELETING: ${persons}`)
+    console.log(`AFTER DELETING: ${persons}`)
   })
 
-  const generateID = () => {
-    const Id = persons.length > 0 ? Math.max(...persons.map(ele => ele.id))+1: 0
-    return Id
-  }
-
-  //Adding new entry 
+  //Adding new entry to MongoDB
   app.post('/api/persons', (req, res) => {
       const body = req.body
-      const nameFilter = persons.map(ele => ele.name)
-
-      //Error Handling if NAME or NUMBER is missing, OR NAME already exists
-      if (!body.name || !body.number) {
+  
+      if (body.name === undefined && body.number === undefined) {
         return res.status(400).json({ 
-          error: 'Name or Number is missing' 
+          error: 'Name or number is missing' 
         })
-      } if(nameFilter.includes(body.name)){
-        return res.status(400).json({ 
-            error: 'name must be unique' 
-          })
-      }
+      } 
 
-      const person = {
+      const person = new Person({
         name : body.name,
         number: body.number,
-        id : generateID(),
-      }
+      })
       
-      persons = persons.concat(person)
-      
-      res.json(person)
+      person.save().then(savedPerson => {
+        res.json(savedPerson)
+      })
   })
   
-  const PORT = process.env.PORT || 3001
+  const PORT = process.env.PORT 
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
   })
