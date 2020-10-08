@@ -1,118 +1,116 @@
-
+require('dotenv').config() //This must be imported before the Person model, otherwise Person won't have an env variable or address to work off of.
 const express = require('express')
 const app = express()
-const cors = require('cors') 
+const cors = require('cors')
+const Person = require('./models/person')
 
 var morgan = require('morgan')
+const { response } = require('express')
 
-morgan.token('body', function (req){
+morgan.token('body', function (req) {
   return JSON.stringify(req.body)
 })
-
 
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body')) //Console Logging format with Morgan
 app.use(express.json()) //JSON PARSER
 app.use(express.static('build')) //To make Express show static content, the index HTML and JS, etc. 
 app.use(cors()) //Cross-Origin Resource Sharing (CORS) allows restricted resources on a webpage to be requested from another domain. 
 
-let persons = [
-    {
-        "name": "Arto Hellas",
-        "number": "040-123456",
-        "id": 1
-    },
-    {
-        "name": "Ada Lovelace",
-        "number": "39-44-5323523",
-        "id": 2
-    },
-    {
-        "name": "Dan Abramov",
-        "number": "12-43-234345",
-        "id": 3
-    },
-    {
-        "name": "Mary Poppendieck",
-        "number": "39-23-6423122",
-        "id": 4
-    }
-]
 
 //Info 
 app.get('/api/info', (req, res) => {
-    res.send('<span>Phonebook has info for ' +  persons.length + ' people </span> <br/>' +
-             '<span>' + new Date().toString() +'</span>')
-    
-  })
-  
+  res.send('<span>Phonebook has info for ' + Person.length + ' people </span> <br/>' +
+    '<span>' + new Date().toString() + '</span>')
+
+})
+
 //Fetching all resources
 app.get('/api/persons', (req, res) => {
-    res.json(persons)
+  Person.find({}).then(person => {
+    res.json(person)
+  })
 })
 
 //Fetching a single person resource
 app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    console.log('id is : ' + id)
-    const person = persons.find(element => { return element.id === id})
-    console.log(person)
-
-    //If an entry for the given id is not found, the server has to respond with the appropriate status code.
-    if(person){
+  Person.findById(request.params.id)
+    .then(person => {
+      if (person) {
         response.json(person)
-    } else{
+      } else {
+        // Person not found
         response.status(404).end()
-    }
-  })
+      }
+    }).catch(error => next(error))
+})
 
-  //Deleting a single phonebook entry
-  app.delete('/api/persons/:id', (req, res) => {
-      const id = Number(req.params.id)
-      persons = persons.filter(element => element.id !== id)
+//Deleting a single phonebook entry
+app.delete('/api/persons/:id', (request, response, next) => {
+  Person.findByIdAndRemove(request.params.id)
+    .then(result => {
+      response.status(204).end() //returns 204 no content after deletion
+    })
+    .catch(error => next(error))
+})
 
-      //Even if the resource didn't originally exist, there's no consensus on what code should be returned
-      //so in both cases, let's just return 204.
-      res.status(204).end()
+//Adding new entry to MongoDB
+app.post('/api/persons', (req, res) => {
+  const body = req.body
 
-      console.log(`AFTER DELETING: ${persons}`)
-  })
-
-  const generateID = () => {
-    const Id = persons.length > 0 ? Math.max(...persons.map(ele => ele.id))+1: 0
-    return Id
+  if (body.name === undefined && body.number === undefined) {
+    return res.status(400).json({
+      error: 'Name or number is missing'
+    })
   }
 
-  //Adding new entry 
-  app.post('/api/persons', (req, res) => {
-      const body = req.body
-      const nameFilter = persons.map(ele => ele.name)
-
-      //Error Handling if NAME or NUMBER is missing, OR NAME already exists
-      if (!body.name || !body.number) {
-        return res.status(400).json({ 
-          error: 'Name or Number is missing' 
-        })
-      } if(nameFilter.includes(body.name)){
-        return res.status(400).json({ 
-            error: 'name must be unique' 
-          })
-      }
-
-      const person = {
-        name : body.name,
-        number: body.number,
-        id : generateID(),
-      }
-      
-      persons = persons.concat(person)
-      
-      res.json(person)
+  const person = new Person({
+    name: body.name,
+    number: body.number,
   })
+
+  person.save().then(savedPerson => {
+    res.json(savedPerson)
+  })
+})
+
+// Modifying an already existing entry
+app.put('/api/persons/:id', (request, response, next) => {
+  const body = request.body
   
-  const PORT = process.env.PORT || 3001
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
-  })
+  const person = {
+    name: body.name,
+    number: body.number,
+  }
 
-  //Uses NodeExpress and Nodemon
+  Person.findByIdAndUpdate(request.params.id, person, {new: true})
+  .then(updatedPerson => {
+    response.json(updatedPerson)
+  })
+  .catch(error => next(error))
+})
+
+//Middleware for error and unknown endpoint
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+// handler of requests with unknown endpoint
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError' && error.kind === 'ObjectId') {
+    return response.status(400).send({ error: 'malformatted id' })
+  }
+  next(error)
+}
+
+app.use(errorHandler)
+
+const PORT = process.env.PORT
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})
+
 
