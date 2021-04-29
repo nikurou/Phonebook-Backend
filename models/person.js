@@ -14,9 +14,15 @@ mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true, useFind
 
 // Each schema maps to a MongoDB collection and defines the shape of the documents within that collection.
 const personSchema = new mongoose.Schema({
-  name: String,
-  number: String,
-  id: String,
+  name: {
+    type: String,
+    required: true
+  },
+  number: {
+    type: String,
+    required: true
+  }, 
+  id: String
 })
 
 personSchema.set('toJSON',{

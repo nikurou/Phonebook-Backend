@@ -54,7 +54,7 @@ app.delete('/api/persons/:id', (request, response, next) => {
 })
 
 //Adding new entry to MongoDB
-app.post('/api/persons', (req, res) => {
+app.post('/api/persons', (req, res, next) => {
   const body = req.body
 
   if (body.name === undefined && body.number === undefined) {
@@ -68,9 +68,12 @@ app.post('/api/persons', (req, res) => {
     number: body.number,
   })
 
-  person.save().then(savedPerson => {
-    res.json(savedPerson)
+  person.save()
+  .then(savedPerson => savedPerson.toJSON())
+  .then(savedAndFormattedPerson => {
+    res.json(savedAndFormattedPerson)
   })
+  .catch(error=>next(error))
 })
 
 // Modifying an already existing entry
@@ -102,6 +105,8 @@ const errorHandler = (error, request, response, next) => {
 
   if (error.name === 'CastError' && error.kind === 'ObjectId') {
     return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
   }
   next(error)
 }
